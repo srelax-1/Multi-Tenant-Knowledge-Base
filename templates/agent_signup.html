@@ -1,0 +1,14 @@
+<h2>Agent Signup</h2>
+<form method="POST">
+  <label>Username:</label><input name="username"><br>
+  <label>Password:</label><input name="password" type="password"><br>
+
+  <label>Select Admin:</label>
+  <select name="admin_id">
+    {% for admin in admins %}
+    <option value="{{ admin.id }}">{{ admin.username }}</option>
+    {% endfor %}
+  </select><br>
+
+  <button>Signup</button>
+</form>
