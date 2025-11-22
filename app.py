@@ -128,6 +128,21 @@ def admin_upload():
 
     return render_template("admin_upload.html")
 
+# Admin: View My Agents
+@app.route('/admin/agents')
+def view_agents():
+    # 1. Security check: Ensure admin is logged in
+    if 'admin_id' not in session:
+        return redirect(url_for('admin_login'))
+
+    # 2. Fetch the current admin object
+    current_admin = Admin.query.get(session['admin_id'])
+    
+    # 3. Get the agents using the relationship defined in your model
+    # 'current_admin.agents' works because of backref='agents' in the Agent model
+    my_agents = current_admin.agents 
+
+    return render_template("admin_agents.html", agents=my_agents, admin=current_admin)
 
 # Agent Query (stub)
 @app.route('/agent/query', methods=['POST'])

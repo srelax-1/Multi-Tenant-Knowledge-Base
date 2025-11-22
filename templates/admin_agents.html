@@ -1,0 +1,20 @@
+<h2>Admin Dashboard: My Agents</h2>
+<p>Welcome, {{ admin.username }}</p>
+
+<h3>Registered Agents</h3>
+{% if agents %}
+    <ul>
+        {% for agent in agents %}
+            <li>
+                <strong>Username:</strong> {{ agent.username }} 
+                (ID: {{ agent.id }})
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>No agents have signed up under your account yet.</p>
+{% endif %}
+
+<hr>
+<a href="{{ url_for('admin_upload') }}">Go to Document Upload</a> | 
+<a href="{{ url_for('admin_login') }}">Logout</a>
