@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, session, url_for
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-import os
+import os, requests
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
@@ -108,8 +108,7 @@ def agent_login():
 
     return render_template("agent_login.html")
 
-
-# Admin Upload
+# Updated Admin Upload Route
 @app.route('/admin/upload', methods=['GET', 'POST'])
 def admin_upload():
     if 'admin_id' not in session:
@@ -122,9 +121,29 @@ def admin_upload():
 
         filename = secure_filename(file.filename)
         save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        
         file.save(save_path)
 
-        return f"File {filename} uploaded successfully"
+        # 2. Send to n8n Webhook
+        webhook_url = "http://127.0.0.1:5678/webhook/uploadfile"
+        admin_id = session['admin_id']
+
+        try:
+            # We open the file we just saved to read it back and send it
+            with open(save_path, 'rb') as f:
+                # Prepare the payload
+                files_payload = {'file': (filename, f, file.content_type)}
+                data_payload = {'admin_id': admin_id}
+                
+                # Send POST request to n8n
+                requests.post(webhook_url, files=files_payload, data=data_payload)
+                
+            print(f"Successfully sent {filename} and Admin ID to n8n.")
+
+        except Exception as e:
+            return f"File saved, but failed to send to webhook: {str(e)}"
+
+        return f"File {filename} uploaded and sent to n8n successfully"
 
     return render_template("admin_upload.html")
 
@@ -142,21 +161,44 @@ def view_agents():
     # 'current_admin.agents' works because of backref='agents' in the Agent model
     my_agents = current_admin.agents 
 
-    return render_template("admin_agents.html", agents=my_agents, admin=current_admin)
+    return render_template("admin_dashboard.html", agents=my_agents, admin=current_admin)
 
-# Agent Query (stub)
-@app.route('/agent/query', methods=['POST'])
+
+@app.route('/agent/query', methods=['GET', 'POST'])  # Allow GET so you can view the page initially
 def agent_query():
+    # 1. Security Check
     if 'agent_id' not in session:
-        return "Unauthorized"
+        return redirect(url_for('agent_login')) # Redirect if not logged in
 
+    # 2. Initialize variables
     agent = Agent.query.get(session['agent_id'])
-    admin_id = request.form.get('admin_id')
+    answer = None # Default to no answer
 
-    if str(agent.admin_id) != str(admin_id):
-        return "Access denied: not your admin"
+    # 3. Handle the Form Submission (POST)
+    if request.method == 'POST':
+        user_query = request.form.get('query')
+        admin_id = agent.admin_id
 
-    return "Query sent (placeholder)"
+        if user_query:
+            n8n_url = "http://127.0.0.1:5678/webhook/chatwithai"
+            
+            payload = {
+                "query": user_query,
+                "admin_id": admin_id
+            }
+
+            try:
+                # Send to n8n
+                response = requests.post(n8n_url, json=payload)
+                # Capture the text response
+                answer = response.text
+            except Exception as e:
+                answer = f"Error connecting to AI: {str(e)}"
+        else:
+            answer = "Please enter a query."
+
+    # 4. Render the page (Pass the answer variable to the HTML)
+    return render_template("agent_dashboard.html", answer=answer)
 
 
 # RUN APP ---------------------------------------------------
@@ -164,4 +206,4 @@ def agent_query():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    app.run(debug=True, port=5001)
