@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Agent Dashboard</title>
+</head>
+<body>
+
+    <h2>Ask the AI</h2>
+
+    {% if answer %}
+        <div style="background-color: #e8f4f8; padding: 15px; border: 1px solid #007bff; margin-bottom: 20px;">
+            <strong>AI Answer:</strong><br>
+            {{ answer }}
+        </div>
+    {% endif %}
+
+    <form action="{{ url_for('agent_query') }}" method="POST">
+        <label>Your Question:</label><br>
+        <textarea name="query" rows="4" cols="50" required></textarea>
+        <br><br>
+        <button type="submit">Ask AI</button>
+    </form>
+
+</body>
+</html>
